@@ -1,0 +1,6 @@
+-- Applied to Supabase project kzexzrdiyzjjtmzrgkiy.
+-- Core entities: profiles, categories, products, wishlist_items, cart_items, orders, order_items.
+-- RLS: catalog is public-read; profiles/cart/wishlist/orders are restricted to auth.uid().
+-- Storage bucket: product-media (public read, 5 MB, jpeg/png/webp).
+-- Auth trigger creates a profile row for every new auth.users record.
+-- See README for architecture and the Supabase dashboard migration history for the applied SQL.
