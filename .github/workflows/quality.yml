@@ -5,6 +5,7 @@ on:
     paths-ignore:
       - 'package-lock.json'
       - 'artifacts/**'
+      - 'showcase/**'
   workflow_dispatch:
 permissions:
   contents: write
@@ -27,19 +28,28 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run desktop and mobile QA
         run: npm run test:e2e
-      - name: Commit verified lockfile and QA screenshots
+      - name: Build 30+ second working-project showcase
+        run: |
+          mkdir -p showcase
+          ffmpeg -y -i test-results/store-showcase-walkthrough-desktop-chromium/video.webm -vf "scale=1555:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1" -r 30 -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p /tmp/desktop.mp4
+          ffmpeg -y -loop 1 -framerate 30 -i artifacts/mobile-chromium-home.png -t 6 -vf "crop=390:844:0:0,scale=499:1080,pad=1920:1080:(ow-iw)/2:0,setsar=1" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p /tmp/mobile.mp4
+          printf "file '/tmp/desktop.mp4'\nfile '/tmp/mobile.mp4'\n" > /tmp/concat.txt
+          ffmpeg -y -f concat -safe 0 -i /tmp/concat.txt -c copy showcase/luxury-ecommerce-showcase.mp4
+          test "$(ffprobe -v error -show_entries format=duration -of csv=p=0 showcase/luxury-ecommerce-showcase.mp4 | cut -d. -f1)" -ge 30
+      - name: Commit verified lockfile QA captures and showcase
         if: success()
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json artifacts/*.png
-          git diff --cached --quiet || (git commit -m 'chore: add verified build lockfile and QA captures' && git push)
-      - name: Upload screenshots and 30+ second showcase recording
+          git add package-lock.json artifacts/*.png showcase/luxury-ecommerce-showcase.mp4
+          git diff --cached --quiet || (git commit -m 'chore: add verified QA captures and showcase video' && git push)
+      - name: Upload QA assets
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: atelier-showcase-assets
           path: |
             artifacts/
+            showcase/
             test-results/
           retention-days: 14
